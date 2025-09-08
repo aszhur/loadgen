@@ -1,0 +1,51 @@
+# Uncomment below for a reasonable "play from file" setup. Conceptually, the point creator
+# is the given file, and the adapter is a listening socket for lines from that file.
+
+#playFromFile: /Users/mori/github.com/sunnylabs/devops/loadgen/points.txt
+#playToHost: localhost
+#playToPort: 12345
+#acceleration: 1
+#startingPps: 1
+#targetPps: 100
+
+pointCreatorConfigs:
+  - type: "CartesianPointCreator"
+    # Sustained target rate (across all metrics)
+    targetPps: 2000
+    # Initial rate
+    startingPps: 100
+    # Ramp-up in pps^2
+    acceleration: 10
+    # (Maximal) rate per timeseries (i.e. metric-host pair)
+    intervalSeconds: 1
+    # metric-host ratio when generting timeseries
+    metricsWeight: 1
+    hostsWeight: 1
+    tagsWeight: 10
+    metricsPrefix: "metric"
+    hostsPrefix: "host"
+    tagsPrefix: "t"
+    telemetryCreatorConfig:
+      type: "ConstantTelemetryCreator"
+      value: 42
+
+# Number of threads -- deafult is number of cores. One point creator per thread.
+numThreads: 4
+
+# Uncomment below to talk to Wavefront over a socket.
+adapterConfig:
+  type: "WavefrontAdapter"
+  port: 12345
+  round: true
+  host: "localhost"
+
+# Uncomment to play to a Wavefront histogram listening port
+#adapterConfig:
+#  type: "WavefrontHistogramAdapter"
+#  port: 40000
+#  host: "localhost"
+
+# Default, play points to a file.
+#adapterConfig:
+# type: "FileAdapter"
+# outputFile: "points.txt"

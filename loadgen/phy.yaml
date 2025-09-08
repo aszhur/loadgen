@@ -1,0 +1,17 @@
+pointCreator:
+  type: "RandomizedPointCreatorConfig"
+  min: 30
+  max: 40
+  targetPps: 30000
+  intervalSeconds: 10
+  startingPps: 1000
+  acceleration: 10
+  metricsWeight: 1
+  hostsWeight: 2
+
+adapter:
+  type: "WavefrontAdapterConfig"
+  port: 2879
+  host: "localhost"
+
+refreshTimeSeconds: 5

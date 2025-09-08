@@ -1,0 +1,69 @@
+# Uncomment below for a reasonable "play from file" setup. Conceptually, the point creator
+# is the given file, and the adapter is a listening socket for lines from that file.
+
+#playFromFile: /Users/mori/github.com/sunnylabs/devops/loadgen/points.txt
+#playToHost: localhost
+#playToPort: 12345
+#acceleration: 1
+#startingPps: 1
+#targetPps: 100
+
+pointCreatorConfigs:
+  - type: "ContainerPointCreator"
+    # Sustained target rate (across all metrics)
+    targetPps: 5000
+    # Initial rate
+    startingPps: 1000
+    # Ramp-up in pps^2
+    acceleration: 10
+    # (Maximal) rate per timeseries (i.e. metric-host pair)
+    intervalSeconds: 1
+    numCluster: 1
+    # min value for numNS should be 2, "default" and "kube-system" are added.
+    numNS: 2
+    numNodesPerCluster: 50
+    numPodsPerNode: 30
+    # min value for numSysContainersPerNode should be 3, "pods", "kubelet", "docker-daemon" are added.
+    numSysContainersPerNode: 3
+    numPodContainersPerPod: 2
+    # numPodsToChurn < numPodsPerNode
+    numPodsToChurn: 5
+    # numPodsToChurn will only be applied when churnTimeInMins > 0
+    churnTimeInMins: 120
+    # we are not really using telemetryCreatorConfig for this type, may need to refactor code later on.
+    telemetryCreatorConfig:
+      type: "ConstantTelemetryCreator"
+      value: 42
+
+# Number of threads -- default is number of cores. One point creator per thread.
+numThreads: 1
+
+# send points as list, once per minute.
+pointList: true
+
+# in seconds, send points once per minute.
+pointGenerationInterval: 60
+
+# stats report interval.
+reportingIntervalSeconds: 30
+
+# AcceleratingRateLimiter refresh
+refreshTimeSeconds: 30
+
+# Uncomment below to talk to Wavefront over a socket.
+adapterConfig:
+  type: "WavefrontAdapter"
+  port: 12345
+  round: true
+  host: "localhost"
+
+# Uncomment to play to a Wavefront histogram listening port
+#adapterConfig:
+#  type: "WavefrontHistogramAdapter"
+#  port: 40000
+#  host: "localhost"
+
+# Default, play points to a file.
+#adapterConfig:
+# type: "FileAdapter"
+# outputFile: "containers.txt"

@@ -1,0 +1,22 @@
+pointCreatorConfigs:
+  - type: "CartesianPointCreator"
+    targetPps: 75
+    intervalSeconds: 54
+    startingPps: 75
+    acceleration: 1
+    multiTagPrefix: "tag"
+    multiTagCount: 4
+    multiTagValueCount: 3
+    timeTagPrefix: "timetag"
+    timeTagCount: 3
+    timeTagSeconds: 27
+    omitTimestamp: true
+    telemetryCreatorConfig:
+      type: "ConstantTelemetryCreator"
+
+adapterConfig:
+  type: "TestAdapter"
+  pointsToRemember: 100
+
+numThreads: 1
+refreshTimeSeconds: 1

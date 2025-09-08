@@ -1,0 +1,47 @@
+# Uncomment below for a reasonable "play from file" setup. Conceptually, the point creator
+# is the given file, and the adapter is a listening socket for lines from that file.
+
+#playFromFile: /Users/mori/github.com/sunnylabs/devops/loadgen/points.txt
+#playToHost: localhost
+#playToPort: 12345
+#acceleration: 1
+#startingPps: 1
+#targetPps: 100
+
+pointCreatorConfigs:
+  - type: "TracePointCreator"
+    # Sustained target rate (across all metrics)
+    targetPps: 50
+    # Initial rate
+    startingPps: 1
+    # Ramp-up in pps^2
+    acceleration: 1
+    # (Maximal) rate per timeseries (i.e. metric-host pair)
+    intervalSeconds: 1
+    # metric-host ratio when generting timeseries
+    metricsWeight: 5
+    hostsWeight: 5
+    tagsWeight: 5
+    spanIdsWeight: 5
+    metricsPrefix: "span"
+    hostsPrefix: "host"
+    tagsPrefix: "t"
+    constantTag: "application=loadgen-0115 service=qa-test-0115"
+    telemetryCreatorConfig:
+      type: "RandomizedTelemetryCreator"
+      min: 0
+      max: 100
+
+# Number of threads -- deafult is number of cores. One point creator per thread.
+numThreads: 4
+
+# Uncomment to play to a Wavefront trace listening port
+adapterConfig:
+  type: "WavefrontTraceAdapter"
+  port: 30000
+  host: "localhost"
+
+# Default, play points to a file.
+#adapterConfig:
+#  type: "FileAdapter"
+#  outputFile: "points.txt"

@@ -1,0 +1,23 @@
+pointCreatorConfigs:
+  - type: "CartesianPointCreator"
+    targetPps: 64
+    intervalSeconds: 1
+    startingPps: 64
+    acceleration: 1
+    metricsWeight: 1
+    hostsWeight: 1
+    tagsWeight: 1
+    telemetryCreatorConfig:
+      type: "RandomizedTelemetryCreator"
+      min: 30
+      max: 40
+    randomPerHostTagIntervalSeconds: 60
+    constantTag: "foo=bar"
+    additionalTagFromHost: "hostsuffix"
+
+adapterConfig:
+  type: "TestAdapter"
+  pointsToRemember: 100
+
+numThreads: 1
+refreshTimeSeconds: 1

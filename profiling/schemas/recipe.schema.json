@@ -1,0 +1,410 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Wavefront Recipe Schema",
+  "description": "Compact statistical profile for Wavefront metric family synthesis",
+  "type": "object",
+  "required": [
+    "version",
+    "family_id",
+    "metric_name",
+    "schema",
+    "statistics",
+    "temporal",
+    "generation"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^v1\\.[0-9]+$",
+      "description": "Recipe format version"
+    },
+    "family_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$",
+      "description": "SHA1 hash of metric_name + sorted tag keys"
+    },
+    "metric_name": {
+      "type": "string",
+      "description": "Base metric name (without delta prefix)"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Recipe creation timestamp"
+    },
+    "capture_window": {
+      "type": "object",
+      "required": ["start_time", "end_time", "duration_hours"],
+      "properties": {
+        "start_time": {"type": "string", "format": "date-time"},
+        "end_time": {"type": "string", "format": "date-time"}, 
+        "duration_hours": {"type": "number", "minimum": 0.1}
+      }
+    },
+    "schema": {
+      "type": "object",
+      "required": ["type", "tag_schema"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["metric", "histogram", "span"]
+        },
+        "is_delta": {
+          "type": "boolean",
+          "description": "True if metric uses delta counter semantics"
+        },
+        "has_histogram": {
+          "type": "boolean", 
+          "description": "True if histogram data is also present"
+        },
+        "tag_schema": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z][a-zA-Z0-9_]*$": {
+              "type": "object",
+              "required": ["type", "presence"],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["categorical", "numeric", "text", "identifier"]
+                },
+                "presence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Fraction of records containing this tag"
+                },
+                "cardinality": {
+                  "type": "integer", 
+                  "minimum": 1,
+                  "description": "Approximate distinct count"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "statistics": {
+      "type": "object",
+      "required": ["sample_count", "source_distribution", "tag_distributions"],
+      "properties": {
+        "sample_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of lines processed"
+        },
+        "source_distribution": {
+          "$ref": "#/definitions/categorical_distribution"
+        },
+        "tag_distributions": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z][a-zA-Z0-9_]*$": {
+              "$ref": "#/definitions/categorical_distribution"
+            }
+          }
+        },
+        "tag_cooccurrence": {
+          "type": "array",
+          "description": "Top-N tag combinations with frequencies",
+          "items": {
+            "type": "object",
+            "required": ["tags", "frequency"],
+            "properties": {
+              "tags": {
+                "type": "object",
+                "patternProperties": {
+                  "^[a-zA-Z][a-zA-Z0-9_]*$": {"type": "string"}
+                }
+              },
+              "frequency": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "value_distribution": {
+          "anyOf": [
+            {"$ref": "#/definitions/numeric_histogram"},
+            {"$ref": "#/definitions/parametric_distribution"}
+          ],
+          "description": "Metric value distribution (if type=metric)"
+        },
+        "histogram_distribution": {
+          "type": "object",
+          "description": "Histogram-specific statistics (if has_histogram=true)",
+          "properties": {
+            "granularities": {
+              "type": "object",
+              "properties": {
+                "M": {"type": "number", "minimum": 0, "maximum": 1},
+                "H": {"type": "number", "minimum": 0, "maximum": 1}, 
+                "D": {"type": "number", "minimum": 0, "maximum": 1}
+              }
+            },
+            "centroid_count_distribution": {"$ref": "#/definitions/numeric_histogram"},
+            "centroid_value_distribution": {"$ref": "#/definitions/numeric_histogram"}
+          }
+        },
+        "span_distribution": {
+          "type": "object", 
+          "description": "Span-specific statistics (if type=span)",
+          "properties": {
+            "duration_distribution": {"$ref": "#/definitions/numeric_histogram"},
+            "operation_distribution": {"$ref": "#/definitions/categorical_distribution"}
+          }
+        }
+      }
+    },
+    "temporal": {
+      "type": "object",
+      "required": ["intensity_curve", "burstiness"],
+      "properties": {
+        "intensity_curve": {
+          "type": "array",
+          "description": "Normalized per-minute emission rates (1440 entries for 24h)",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 1440,
+          "maxItems": 1440
+        },
+        "burstiness": {
+          "type": "object",
+          "required": ["coefficient_of_variation", "fano_factor"],
+          "properties": {
+            "coefficient_of_variation": {
+              "type": "number",
+              "minimum": 0,
+              "description": "CV of inter-arrival times"
+            },
+            "fano_factor": {
+              "type": "number", 
+              "minimum": 0,
+              "description": "Variance-to-mean ratio"
+            }
+          }
+        },
+        "cadence": {
+          "type": "object",
+          "description": "Submission timing patterns",
+          "properties": {
+            "histogram_cadence_seconds": {
+              "type": "object",
+              "properties": {
+                "M": {"type": "number", "minimum": 1},
+                "H": {"type": "number", "minimum": 1},
+                "D": {"type": "number", "minimum": 1}
+              }
+            }
+          }
+        }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "description": "Line-level characteristics",
+      "properties": {
+        "size_distribution": {"$ref": "#/definitions/numeric_histogram"},
+        "error_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Fraction of malformed/error lines"
+        }
+      }
+    },
+    "patterns": {
+      "type": "object",
+      "description": "String generation patterns",
+      "properties": {
+        "source_patterns": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/string_pattern"}
+        },
+        "tag_value_patterns": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z][a-zA-Z0-9_]*$": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/string_pattern"}
+            }
+          }
+        }
+      }
+    },
+    "generation": {
+      "type": "object",
+      "required": ["entity_hints"],
+      "properties": {
+        "entity_hints": {
+          "type": "object",
+          "description": "Per-source emission characteristics",
+          "properties": {
+            "source_count_estimate": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Estimated distinct source count"
+            },
+            "per_source_rate_distribution": {
+              "$ref": "#/definitions/numeric_histogram"
+            }
+          }
+        },
+        "constraints": {
+          "type": "object", 
+          "properties": {
+            "max_cardinality_per_tag": {
+              "type": "object",
+              "patternProperties": {
+                "^[a-zA-Z][a-zA-Z0-9_]*$": {"type": "integer", "minimum": 1}
+              }
+            },
+            "required_tags": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "description": "Quality metrics from profiling",
+      "properties": {
+        "coverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Fraction of input data successfully profiled"
+        },
+        "drop_reasons": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-z_]+$": {"type": "integer", "minimum": 0}
+          }
+        },
+        "fitness_scores": {
+          "type": "object",
+          "properties": {
+            "categorical_js_divergence": {"type": "number", "minimum": 0},
+            "numeric_ks_statistic": {"type": "number", "minimum": 0, "maximum": 1},
+            "temporal_correlation": {"type": "number", "minimum": -1, "maximum": 1}
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "categorical_distribution": {
+      "type": "object",
+      "required": ["top_values", "total_count"],
+      "properties": {
+        "top_values": {
+          "type": "array",
+          "description": "Heavy hitters with frequencies",
+          "items": {
+            "type": "object", 
+            "required": ["value", "frequency"],
+            "properties": {
+              "value": {"type": "string"},
+              "frequency": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "total_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total distinct values observed"
+        },
+        "entropy": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Shannon entropy of distribution"
+        }
+      }
+    },
+    "numeric_histogram": {
+      "type": "object",
+      "required": ["bins", "counts"],
+      "properties": {
+        "bins": {
+          "type": "array",
+          "description": "Bin edges (n+1 edges for n bins)",
+          "items": {"type": "number"}
+        },
+        "counts": {
+          "type": "array", 
+          "description": "Count per bin",
+          "items": {"type": "integer", "minimum": 0}
+        },
+        "quantiles": {
+          "type": "object",
+          "properties": {
+            "p01": {"type": "number"},
+            "p05": {"type": "number"},
+            "p50": {"type": "number"},
+            "p95": {"type": "number"},
+            "p99": {"type": "number"}
+          }
+        }
+      }
+    },
+    "parametric_distribution": {
+      "type": "object",
+      "required": ["type", "parameters", "goodness_of_fit"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["log_normal", "gamma", "exponential", "normal"]
+        },
+        "parameters": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-z_]+$": {"type": "number"}
+          }
+        },
+        "goodness_of_fit": {
+          "type": "object",
+          "properties": {
+            "ks_statistic": {"type": "number", "minimum": 0, "maximum": 1},
+            "ks_p_value": {"type": "number", "minimum": 0, "maximum": 1}
+          }
+        }
+      }
+    },
+    "string_pattern": {
+      "type": "object", 
+      "required": ["pattern", "frequency"],
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "description": "Regex-like pattern (e.g., 'svc-[a-z]{3}-\\d{2}')"
+        },
+        "frequency": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "char_distributions": {
+          "type": "object",
+          "description": "Character n-gram distributions for realistic generation",
+          "properties": {
+            "unigrams": {"type": "object"},
+            "bigrams": {"type": "object"},
+            "trigrams": {"type": "object"}
+          }
+        },
+        "length_distribution": {"$ref": "#/definitions/numeric_histogram"}
+      }
+    }
+  }
+}

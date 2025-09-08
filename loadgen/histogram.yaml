@@ -1,0 +1,37 @@
+#Configuration file for the RandomDistributionPointCreator
+# used for histogram testing
+
+pointCreatorConfigs:
+  - type: "RandomDistributionPointCreator"
+    numHosts: 5
+    numMetrics: 100
+    numTagValues: 5
+    numTagKeys: 1
+    targetPps: 50000
+    startingPps: 100
+    acceleration: 100
+    telemetryCreatorConfig:
+      type: "RandomizedTelemetryCreator"
+      min: 0
+
+# Number of threads -- deafult is number of cores. One point creator per thread.
+numThreads: 4
+
+# Uncomment below to talk to Wavefront over a socket.
+adapterConfig:
+  type: "WavefrontAdapter"
+  port: 12345
+  round: true
+  host: "localhost"
+
+# Uncomment to play to a Wavefront histogram listening port
+#adapterConfig:
+#  type: "WavefrontHistogramAdapter"
+#  port: 40000
+#  host: "localhost"
+
+# Default, play points to a file.
+#adapterConfig:
+# type: "FileAdapter"
+# outputFile: "points.txt"
+
