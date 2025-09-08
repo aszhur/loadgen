@@ -191,11 +191,6 @@ Internet → HTTPS Load Balancer → Envoy MIG → Collector MIG
 - **Same-Region Deployment**: Minimize latency and egress costs
 - **Health Check Paths**: `/health` on collectors, `/ready` on capture agents
 
-### Security Boundaries
-- **DMZ**: External LB to Envoy MIG (HTTPS terminated at LB)
-- **Internal**: Plain HTTP between MIGs (private VPC)  
-- **Storage**: GCS with IAM-based access control
-
 ## Scaling Characteristics
 
 ### Envoy
@@ -229,26 +224,6 @@ Internet → HTTPS Load Balancer → Envoy MIG → Collector MIG
 - Recipe versioning prevents incompatible updates
 - Worker pods restart on Recipe reload failures
 - Control plane maintains scenario state across restarts
-
-## Monitoring & Observability
-
-### Key Metrics
-- **Latency Impact**: p95/p99 delta introduced by mirroring  
-- **Capture Health**: backlog depth, upload rate, error count
-- **Generation Fidelity**: divergence scores per metric family
-- **Resource Utilization**: CPU/memory/disk across all tiers
-- **Worker Metrics**: lines_emitted, bytes_emitted, http_errors (exposed via /metrics endpoint)
-
-### Alerting Thresholds
-- Backlog > 60s for > 5 minutes
-- Upload rate < 80% expected for > 10 minutes  
-- Mirror error rate > 1% for > 2 minutes
-- Divergence red status for > 15 minutes
-
-### Dashboards
-- **Operations**: Real-time health across all tiers
-- **Capacity**: Resource utilization and scaling triggers  
-- **Quality**: Recipe coverage and generation fidelity
 
 ## Configuration Management
 
