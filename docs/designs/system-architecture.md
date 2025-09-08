@@ -32,7 +32,7 @@ graph TB
     SPARK --> RECIPES[(Recipes)]
     
     RECIPES --> GEN[GKE Generator<br/>Workers]
-    GEN --> COL
+    GEN --> COLLT[Collector LT MIG<br/>]
     
     MON[Monitoring] --> ENV
     MON --> CAP
