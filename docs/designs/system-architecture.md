@@ -16,16 +16,39 @@ The Wavefront Load Generator is a near-real traffic reproduction system designed
 - **Wavefront Native**: Honor all format semantics (deltas, histograms, spans)
 - **Horizontal Scale**: All tiers auto-scale based on load/backlog
 
+## Architecture
+
+```mermaid
+graph TB
+    LB[External HTTPS LB] --> ENV[Envoy MIG<br/>]
+    ENV --> COL[Collector MIG<br/>]
+    ENV -.->|Mirror| CAP[Capture-Agent MIG<br/>]
+    CAP --> GCS[(GCS Bucket)]
+    
+    XDS[xDS Controller] --> ENV
+    XDS --> CAP
+    
+    GCS --> SPARK[Dataproc Serverless<br/>Profiling Jobs]
+    SPARK --> RECIPES[(Recipes)]
+    
+    RECIPES --> GEN[GKE Generator<br/>Workers]
+    GEN --> COL
+    
+    MON[Monitoring] --> ENV
+    MON --> CAP
+    MON --> GEN
+```
+
 ## Component Architecture
 
-### Tier-E: Envoy MIG (Proxy + Mirror)
+### Envoy MIG (Proxy + Mirror)
 
 **Purpose**: Primary ingress proxy with async traffic mirroring capability
 
 **Key Features**:
 - Receives external HTTPS traffic, terminates at external LB
-- Routes primary traffic to existing Collector MIG (Tier-C)
-- Asynchronously mirrors requests to Capture-Agent MIG (Tier-W)
+- Routes primary traffic to existing Collector MIG
+- Asynchronously mirrors requests to Capture-Agent MIG
 - Runtime control via RTDS key `capture.enabled` (0-100%)
 - Active health checks and outlier detection
 
@@ -37,12 +60,12 @@ The Wavefront Load Generator is a near-real traffic reproduction system designed
 - xDS Controller for endpoint discovery
 - Cloud Monitoring for metrics export
 
-### Tier-W: Capture-Agent MIG (Mirror Processing)
+### Capture-Agent MIG (Mirror Processing)
 
 **Purpose**: Process mirrored traffic and upload to GCS for profiling
 
 **Key Features**:
-- Receives HTTP mirrors from Tier-E
+- Receives HTTP mirrors from Envoy proxy
 - Batches Wavefront lines in memory (256-512MB or 60s rotation)
 - Zstd compression (level 3-5) with fsync before upload
 - Resumable parallel GCS uploads (16 workers, 64-256MB chunks)
@@ -50,7 +73,7 @@ The Wavefront Load Generator is a near-real traffic reproduction system designed
 
 **Data Layout**:
 ```
-gs://<bucket>/capture/dt=YYYY-MM-DD/mig=<tierE>/<instance>/part-NNN.wf.zst
+gs://<bucket>/capture/dt=YYYY-MM-DD/mig=<Envoy>/<instance>/part-NNN.wf.zst
 gs://<bucket>/capture/dt=YYYY-MM-DD/manifests/<instance>-manifest.jsonl
 ```
 
@@ -175,12 +198,12 @@ Internet → HTTPS Load Balancer → Envoy MIG → Collector MIG
 
 ## Scaling Characteristics
 
-### Tier-E (Envoy)
+### Envoy
 - **Capacity**: Fixed or request-rate based
 - **Bottleneck**: CPU for TLS termination and mirroring logic
 - **Target**: < 2ms p95 latency impact
 
-### Tier-W (Capture)  
+### Capture
 - **Capacity**: Custom metric on backlog seconds
 - **Bottleneck**: GCS upload bandwidth and local storage
 - **Target**: 8s average backlog with 116 MB/s aggregate throughput
